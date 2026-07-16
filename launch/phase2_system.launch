@@ -1,0 +1,16 @@
+<launch>
+  <!-- 1. MARSIM: forest, GPU, spawn z=0.3 (our copy) -->
+  <include file="$(find ishb_bringup)/launch/marsim_forest.launch"/>
+
+  <!-- 2. FAST-LIO (stock, its rviz suppressed; adjust per step 1 findings) -->
+  <include file="$(find fast_lio)/launch/mapping_marsim.launch">
+    <arg name="rviz" value="false"/>
+  </include>
+
+  <!-- 3. SUPER, remapped/configured (our launch: fsm_node, static TF bridge) -->
+  <include file="$(find ishb_bringup)/launch/super_marsim.launch"/>
+
+  <!-- 4. Our one RViz -->
+  <node pkg="rviz" type="rviz" name="ishb_rviz"
+        args="-d $(find ishb_bringup)/rviz/phase2.rviz"/>
+</launch>

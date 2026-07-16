@@ -10,4 +10,10 @@
 
   <!-- perfect_drone: deliberately absent (MARSIM+FAST-LIO replace it) -->
   <!-- Their two rviz nodes: also dropped; we run one combined rviz ourselves -->
+
+  <!-- Bridge MARSIM's world and FAST-LIO's camera_init TF islands.
+     camera_init origin = drone boot pose = world (0, 0, 0.3). -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_camera_init"
+      args="0 0 0.3 0 0 0 world camera_init"/>
+
 </launch>
