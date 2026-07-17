@@ -55,8 +55,8 @@
         <arg name="use_gpu" value="$(arg use_gpu_)"/>
         <arg name="use_uav_extra_model_" value="$(arg use_uav_extra_model)"/>
     </include>
-
+<!--
    <node name="rvizvisualisation" pkg="rviz" type="rviz" output="screen"
    args="-d $(find test_interface)/config/traj.rviz" />
-
+-->
 </launch>
