@@ -9,7 +9,8 @@ GOAL_TOL = 1.0 #Tolerance for checking whether odom reading match waypoint4
 
 
 class ourNode:
-    def __init__(self): # list of dicts of waypoints
+    def __init__(self): 
+        # list of dicts of waypoints
         self.waypts = [
             {'x': 15.0, 'y': -3.0, 'z': 2.0},
             {'x': 0.0, 'y': -6.0, 'z': 2.0},
@@ -19,11 +20,13 @@ class ourNode:
             {'x': 0.0, 'y': -15.0, 'z': 2.0}
         ]
 
-        self.waypt_index = 0 # index of waypoint list
+        # index of waypoint list
+        self.waypt_index = 0 
 
         self.lock = threading.Lock()
+
+        #Odom var to hold the x,y,z odom data
         self.latest_pos = None
-        self.latest_msg = None
 
         #List to hold odom data, cleared every
         self.odom_list = []
@@ -55,23 +58,14 @@ class ourNode:
 
         self.pub.publish(self.msg)
 
-        self.first_publ = False #Now not first time
-
     def odom_cb(self, msg):
         with self.lock:
-            # self.latest_msg = msg
-            # self.latest_msg.header.stamp = rospy.Time.now()
-
             self.latest_pos = msg.pose.pose.position
-            self.odom_list.append(self.latest_pos)
+            self.odom_list.append(self.latest_pos) #Add odom data to list for odom_watchdog
             #print("INSIDE HERE IS P: ", self.latest_pos)
             self.is_odom = True # latest_pos odom should be set by now
 
     def dist_to_goal(self, odom):
-        # while self.sub.get_num_connections() == 0 and not rospy.is_shutdown():
-        #     print("---WAITING---")
-        #     print("DIST ODOM: ", odom)
-        #     rospy.sleep(0.1) #If no connection, sleep
         # print("DIST ODOM: ", odom, "\n")
 
         Odomx = odom.x
@@ -88,7 +82,6 @@ class ourNode:
         # print("D: ", distance)
         if distance < GOAL_TOL:
             # print("waypt reached")
-            # rospy.sleep(1)
 
             if self.waypt_index < len(self.waypts)-1:
                 self.waypt_index += 1
@@ -98,11 +91,12 @@ class ourNode:
             self.is_odom = False #Set back to false, so can do this func until have odom data
     
     def odom_watchdog(self):
+        #Wating until 5 secs of odom data, to see if drone moving
         if len(self.odom_list) > 50:
             delta_x = self.odom_list[-1].x - self.odom_list[0].x
             delta_y = self.odom_list[-1].y - self.odom_list[0].y
 
-            if abs(delta_x) < 0.5 and abs(delta_y) < 0.5:
+            if abs(delta_x) < 0.5 and abs(delta_y) < 0.5: #Checking if odom x and y changed, if so then publish goal again so drone move
                 print("Delta x: ", delta_x)
                 print("Delta y: ", delta_y)
                 print("-----------I AM HAVING---------")
@@ -110,68 +104,22 @@ class ourNode:
 
             self.odom_list.clear()
 
-    #run waits until first publish goes through, and then pu
     def run(self):
         while(not rospy.is_shutdown()): #TODO add smt when do FSM
-            # rospy.sleep(1) 
-            #IMPORTANT, why? #TODO #protects against race condition, to make sure you can publish an initializied 
-            #FIRST PUB without moving on to "NOW HERE"
 
-            self.odom_watchdog() 
-            #TODO put flag check here, odometry check 
+            self.odom_watchdog() #watchdog here to run to republish if not moving, and checks length of list
 
             with self.lock:
                 if self.is_odom == True:
                     # print("NOW HERE")
                     odom = self.latest_pos
-                    self.dist_to_goal(odom) # only runs when odom is set, and after first publish
-            
-    
-
-
-
-
+                    self.dist_to_goal(odom) # only runs when odom is set
 
 
 def main():
     rospy.init_node("ourNode") #Make ourNode
 
     ourNode().run()
-
-    #Intializing publisher
-    # pub = rospy.Publisher("/super/goal", PoseStamped, queue_size = 10)
-
-    # #Wait until get a connection
-    # while pub.get_num_connections() == 0 and not rospy.is_shutdown():
-    #     rospy.sleep(0.1) #If no connection, sleep
-
-    # #Creating bare bone message to publish
-    # msg = PoseStamped() #message is an instance of class PosStamped
-    # msg.header.stamp = rospy.Time.now() #time stamp for msg
-    # msg.header.frame_id = "world" #frame of message
-    # msg.pose.position.x = 6.67
-    # msg.pose.position.y = 6.67
-    # msg.pose.position.z = 6.67
-    # msg.pose.orientation.w = 1.0
-    # pub.publish(msg)
-    
-    # #Initlizing subscriber
-    # def odom_cb(msg):
-    #     with threading.Lock():
-    #         POS = msg.pose.pose.position
-    #         print("INSIDE HERE IS P: ", POS)
-    
-    # # print("HERE IS P: ", POS)
-    
-    # sub = rospy.Subscriber("/Odometry", Odometry, odom_cb, queue_size = 10)
-    
-    #Checking if at waypoint
-    # reached = False
-    # while(not reached):
-    #     with threading.Lock():
-    #         # print("HERE IS P: ", POS)
-
-
 
     rospy.spin()
 
