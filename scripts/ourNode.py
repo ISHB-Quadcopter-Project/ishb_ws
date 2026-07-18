@@ -5,35 +5,52 @@ from geometry_msgs.msg import PoseStamped, Point
 import threading
 import math
 
-GOAL_TOL = 0.5 #Tolerance for checking whether odom reading match waypoint4
+GOAL_TOL = 1.0 #Tolerance for checking whether odom reading match waypoint4
 
 
 class ourNode:
     def __init__(self):
+        self.waypts = [
+            {'x': 15.0, 'y': -3.0, 'z': 2.0},
+            {'x': 0.0, 'y': -6.0, 'z': 2.0},
+            {'x': 15.0, 'y': -9.0, 'z': 2.0},
+            {'x': 0.0, 'y': -12.0, 'z': 2.0},
+            {'x': 15.0, 'y': -15.0, 'z': 2.0},
+            {'x': 0.0, 'y': -15.0, 'z': 2.0}
+        ]
+
+        self.waypt_index = 0
+
         self.lock = threading.Lock()
         self.latest_pos = None
 
         #Intializing publisher
         self.pub = rospy.Publisher("/super/goal", PoseStamped, queue_size = 10)
 
-        #Creating bare bone message to publish
+        #Intializing subscriber
+        self.sub = rospy.Subscriber("/Odometry", Odometry, self.odom_cb, queue_size = 10)
+
+        #Flag to see if there is available odom data to check dist_to_goal
+        self.is_odom = False
+    
+    def publ(self):
+        #Creating message to publish
         self.msg = PoseStamped() #message is an instance of class PosStamped
         self.msg.header.stamp = rospy.Time.now() #time stamp for msg
         self.msg.header.frame_id = "world" #frame of message
-        self.msg.pose.position.x = 3.67
-        self.msg.pose.position.y = 3.67
-        self.msg.pose.position.z = 2
+
+        print(self.waypt_index)
+        self.msg.pose.position.x = self.waypts[self.waypt_index]["x"]
+        self.msg.pose.position.y = self.waypts[self.waypt_index]["y"]
+        self.msg.pose.position.z = self.waypts[self.waypt_index]["z"]
         self.msg.pose.orientation.w = 1.0
 
-        self.sub = rospy.Subscriber("/Odometry", Odometry, self.odom_cb, queue_size = 10)
-
-        self.is_odom = False
+        self.pub.publish(self.msg)
 
     def odom_cb(self, msg):
         with self.lock:
             self.latest_pos = msg.pose.pose.position
             # print("INSIDE HERE IS P: ", self.latest_pos)
-            self.pub.publish(self.msg) #TODO change this out, and update the header w/ it too
             self.is_odom = True
 
     def dist_to_goal(self, odom):
@@ -47,24 +64,26 @@ class ourNode:
             Odomy = odom.y
             Odomz = odom.z
 
-            dist_x = Odomx - 3.67
-            dist_y = Odomy - 3.67
-            dist_z = Odomz - 2
+            dist_x = Odomx - self.waypts[self.waypt_index]["x"]
+            dist_y = Odomy - self.waypts[self.waypt_index]["y"]
+            dist_z = Odomz - self.waypts[self.waypt_index]["z"]
 
             squared_sum = pow(dist_x, 2) + pow(dist_y, 2) + pow(dist_z, 2)
 
             distance = math.sqrt(squared_sum)
             print("D: ", distance)
-
             if distance < GOAL_TOL:
                 print("waypt reached")
+                rospy.sleep(1)
 
-
+                if self.waypt_index < len(self.waypts)-1:
+                    self.waypt_index += 1
 
 
     def run(self):
         while(not rospy.is_shutdown()): #TODO add smt when do FSM
-            rospy.sleep(0.1)
+            # rospy.sleep(0.1)
+            self.publ()
             with self.lock:
                 odom = self.latest_pos
                 self.dist_to_goal(odom)
