@@ -9,7 +9,7 @@ GOAL_TOL = 1.0 #Tolerance for checking whether odom reading match waypoint4
 
 
 class ourNode:
-    def __init__(self):
+    def __init__(self): # list of dicts of waypoints
         self.waypts = [
             {'x': 15.0, 'y': -3.0, 'z': 2.0},
             {'x': 0.0, 'y': -6.0, 'z': 2.0},
@@ -19,7 +19,7 @@ class ourNode:
             {'x': 0.0, 'y': -15.0, 'z': 2.0}
         ]
 
-        self.waypt_index = 0
+        self.waypt_index = 0 # index of waypoint list
 
         self.lock = threading.Lock()
         self.latest_pos = None
@@ -57,7 +57,7 @@ class ourNode:
         with self.lock:
             self.latest_pos = msg.pose.pose.position
             #print("INSIDE HERE IS P: ", self.latest_pos)
-            self.is_odom = True
+            self.is_odom = True # latest_pos odom should be set by now
 
     def dist_to_goal(self, odom):
         # while self.sub.get_num_connections() == 0 and not rospy.is_shutdown():
@@ -89,18 +89,21 @@ class ourNode:
 
                 self.is_odom = False #Set back to false, so can do this func until have odom data
 
-
+    #run waits until first publish goes through, and then pu
     def run(self):
         while(not rospy.is_shutdown()): #TODO add smt when do FSM
-            rospy.sleep(1) #IMPORTANT, why? #TODO
-            if self.first_publ == True:
+            rospy.sleep(1) 
+            #IMPORTANT, why? #TODO #protects against race condition, to make sure you can publish an initializied 
+            #FIRST PUB without moving on to "NOW HERE" 
+            #TODO put flag check here, odometry check 
+            if self.first_publ == True: 
                 print("HERE")
                 self.publ() #Publish for the first time
             else:
                 with self.lock:
                     print("NOW HERE")
                     odom = self.latest_pos
-                    self.dist_to_goal(odom)
+                    self.dist_to_goal(odom) # only runs when odom is set, and after first publish
             
     
 
