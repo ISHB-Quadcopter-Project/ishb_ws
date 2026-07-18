@@ -32,14 +32,18 @@ class ourNode:
 
         #Flag to see if there is available odom data to check dist_to_goal
         self.is_odom = False
+
+        #First goal publish
+        self.first_publ = True
     
     def publ(self):
+        # print("Publishing now")
         #Creating message to publish
         self.msg = PoseStamped() #message is an instance of class PosStamped
         self.msg.header.stamp = rospy.Time.now() #time stamp for msg
         self.msg.header.frame_id = "world" #frame of message
 
-        print(self.waypt_index)
+        # print(self.waypt_index)
         self.msg.pose.position.x = self.waypts[self.waypt_index]["x"]
         self.msg.pose.position.y = self.waypts[self.waypt_index]["y"]
         self.msg.pose.position.z = self.waypts[self.waypt_index]["z"]
@@ -47,10 +51,12 @@ class ourNode:
 
         self.pub.publish(self.msg)
 
+        self.first_publ = False #Now not first time
+
     def odom_cb(self, msg):
         with self.lock:
             self.latest_pos = msg.pose.pose.position
-            # print("INSIDE HERE IS P: ", self.latest_pos)
+            #print("INSIDE HERE IS P: ", self.latest_pos)
             self.is_odom = True
 
     def dist_to_goal(self, odom):
@@ -74,20 +80,28 @@ class ourNode:
             print("D: ", distance)
             if distance < GOAL_TOL:
                 print("waypt reached")
-                rospy.sleep(1)
+                # rospy.sleep(1)
 
                 if self.waypt_index < len(self.waypts)-1:
                     self.waypt_index += 1
+                
+                self.publ() #Once reached waypoint, publish next one, instead of spamming in run
+
+                self.is_odom = False #Set back to false, so can do this func until have odom data
 
 
     def run(self):
         while(not rospy.is_shutdown()): #TODO add smt when do FSM
-            # rospy.sleep(0.1)
-            self.publ()
-            with self.lock:
-                odom = self.latest_pos
-                self.dist_to_goal(odom)
-        
+            rospy.sleep(1) #IMPORTANT, why? #TODO
+            if self.first_publ == True:
+                print("HERE")
+                self.publ() #Publish for the first time
+            else:
+                with self.lock:
+                    print("NOW HERE")
+                    odom = self.latest_pos
+                    self.dist_to_goal(odom)
+            
     
 
 
