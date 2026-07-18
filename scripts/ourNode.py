@@ -23,6 +23,10 @@ class ourNode:
 
         self.lock = threading.Lock()
         self.latest_pos = None
+        self.latest_msg = None
+
+        #List to hold odom data, cleared every
+        self.odom_list = []
 
         #Intializing publisher
         self.pub = rospy.Publisher("/super/goal", PoseStamped, queue_size = 10)
@@ -55,7 +59,11 @@ class ourNode:
 
     def odom_cb(self, msg):
         with self.lock:
+            # self.latest_msg = msg
+            # self.latest_msg.header.stamp = rospy.Time.now()
+
             self.latest_pos = msg.pose.pose.position
+            self.odom_list.append(self.latest_pos)
             #print("INSIDE HERE IS P: ", self.latest_pos)
             self.is_odom = True # latest_pos odom should be set by now
 
@@ -88,13 +96,26 @@ class ourNode:
                 self.publ() #Once reached waypoint, publish next one, instead of spamming in run
 
                 self.is_odom = False #Set back to false, so can do this func until have odom data
+    
+    def odom_watchdog(self):
+        if len(self.odom_list) > 50:
+            delta_x = self.odom_list[-1].x - self.odom_list[0].x
+            delta_y = self.odom_list[-1].y - self.odom_list[0].y
+
+            if delta_x and delta_y < 0.5:
+                print("-----------I AM HAVING---------")
+                self.publ()
+
+            self.odom_list.clear()
 
     #run waits until first publish goes through, and then pu
     def run(self):
         while(not rospy.is_shutdown()): #TODO add smt when do FSM
-            rospy.sleep(1) 
+            # rospy.sleep(1) 
             #IMPORTANT, why? #TODO #protects against race condition, to make sure you can publish an initializied 
-            #FIRST PUB without moving on to "NOW HERE" 
+            #FIRST PUB without moving on to "NOW HERE"
+
+            self.odom_watchdog() 
             #TODO put flag check here, odometry check 
             if self.first_publ == True: 
                 print("HERE")
