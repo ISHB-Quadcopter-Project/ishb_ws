@@ -72,37 +72,39 @@ class ourNode:
         #     print("---WAITING---")
         #     print("DIST ODOM: ", odom)
         #     rospy.sleep(0.1) #If no connection, sleep
-        print("DIST ODOM: ", odom, "\n")
-        if self.is_odom == True:
-            Odomx = odom.x
-            Odomy = odom.y
-            Odomz = odom.z
+        # print("DIST ODOM: ", odom, "\n")
 
-            dist_x = Odomx - self.waypts[self.waypt_index]["x"]
-            dist_y = Odomy - self.waypts[self.waypt_index]["y"]
-            dist_z = Odomz - self.waypts[self.waypt_index]["z"]
+        Odomx = odom.x
+        Odomy = odom.y
+        Odomz = odom.z
 
-            squared_sum = pow(dist_x, 2) + pow(dist_y, 2) + pow(dist_z, 2)
+        dist_x = Odomx - self.waypts[self.waypt_index]["x"]
+        dist_y = Odomy - self.waypts[self.waypt_index]["y"]
+        dist_z = Odomz - self.waypts[self.waypt_index]["z"]
 
-            distance = math.sqrt(squared_sum)
-            print("D: ", distance)
-            if distance < GOAL_TOL:
-                print("waypt reached")
-                # rospy.sleep(1)
+        squared_sum = pow(dist_x, 2) + pow(dist_y, 2) + pow(dist_z, 2)
 
-                if self.waypt_index < len(self.waypts)-1:
-                    self.waypt_index += 1
-                
-                self.publ() #Once reached waypoint, publish next one, instead of spamming in run
+        distance = math.sqrt(squared_sum)
+        # print("D: ", distance)
+        if distance < GOAL_TOL:
+            # print("waypt reached")
+            # rospy.sleep(1)
 
-                self.is_odom = False #Set back to false, so can do this func until have odom data
+            if self.waypt_index < len(self.waypts)-1:
+                self.waypt_index += 1
+            
+            self.publ() #Once reached waypoint, publish next one, instead of spamming in run
+
+            self.is_odom = False #Set back to false, so can do this func until have odom data
     
     def odom_watchdog(self):
         if len(self.odom_list) > 50:
             delta_x = self.odom_list[-1].x - self.odom_list[0].x
             delta_y = self.odom_list[-1].y - self.odom_list[0].y
 
-            if delta_x and delta_y < 0.5:
+            if abs(delta_x) < 0.5 and abs(delta_y) < 0.5:
+                print("Delta x: ", delta_x)
+                print("Delta y: ", delta_y)
                 print("-----------I AM HAVING---------")
                 self.publ()
 
@@ -117,12 +119,10 @@ class ourNode:
 
             self.odom_watchdog() 
             #TODO put flag check here, odometry check 
-            if self.first_publ == True: 
-                print("HERE")
-                self.publ() #Publish for the first time
-            else:
-                with self.lock:
-                    print("NOW HERE")
+
+            with self.lock:
+                if self.is_odom == True:
+                    # print("NOW HERE")
                     odom = self.latest_pos
                     self.dist_to_goal(odom) # only runs when odom is set, and after first publish
             
